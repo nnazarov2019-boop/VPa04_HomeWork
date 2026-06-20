@@ -15,6 +15,7 @@ G(s) = ----------------------------------------------
 Порядок знаменателя n >= порядка числителя m.
 """
 
+import sys
 import sympy as sp
 
 
@@ -102,22 +103,51 @@ def tf_to_ss(num_order: int, den_order: int) -> tuple:
 def print_matrix(label: str, matrix: sp.Matrix) -> None:
     """Выводит матрицу с заголовком в читаемом виде."""
     print(f"\n{label}:")
-    sp.pprint(matrix, use_unicode=True)
+    sp.pprint(matrix, use_unicode=False)
 
 
-def main() -> None:
-    """Главная функция консольного приложения."""
-    print("=" * 60)
-    print("  ПРЕОБРАЗОВАНИЕ ПЕРЕДАТОЧНОЙ ФУНКЦИИ В ПРОСТРАНСТВО СОСТОЯНИЙ")
-    print("=" * 60)
-    print()
-    print("Передаточная функция имеет вид:")
-    print("    G(s) = (b_m*s^m + b_{m-1}*s^(m-1) + ... + b_0)")
-    print("           / (s^n + a_{n-1}*s^(n-1) + ... + a_0)")
-    print()
-    print("Индекс коэффициента совпадает с показателем степени s.")
-    print()
+def parse_cli_args(args: list[str]) -> tuple[int, int] | None:
+    """
+    Парсит аргументы командной строки.
 
+    Ожидается 2 аргумента: <порядок_числителя> <порядок_знаменателя>.
+
+    Возвращает (m, n) или None, если аргументы некорректны.
+    """
+    if len(args) < 2:
+        print(
+            "Ошибка: требуется 2 аргумента: <порядок_числителя> <порядок_знаменателя>.",
+            file=sys.stderr,
+        )
+        return None
+
+    try:
+        num_order = int(args[0])
+        den_order = int(args[1])
+    except ValueError:
+        print("Ошибка: аргументы должны быть целыми числами.", file=sys.stderr)
+        return None
+
+    if num_order < 0:
+        print("Ошибка: порядок числителя должен быть >= 0.", file=sys.stderr)
+        return None
+
+    if den_order <= 0:
+        print("Ошибка: порядок знаменателя должен быть > 0.", file=sys.stderr)
+        return None
+
+    if den_order < num_order:
+        print(
+            "Ошибка: порядок знаменателя (n) должен быть >= порядка числителя (m).",
+            file=sys.stderr,
+        )
+        return None
+
+    return num_order, den_order
+
+
+def interactive_input() -> tuple[int, int]:
+    """Запрашивает у пользователя m и n в интерактивном режиме."""
     # --- Ввод порядка числителя ---
     while True:
         try:
@@ -143,16 +173,27 @@ def main() -> None:
         except ValueError:
             print("Ошибка: введите целое число.")
 
+    return num_order, den_order
+
+
+def print_banner() -> None:
+    """Выводит приветственный баннер."""
+    print("=" * 60)
+    print("  ПРЕОБРАЗОВАНИЕ ПЕРЕДАТОЧНОЙ ФУНКЦИИ В ПРОСТРАНСТВО СОСТОЯНИЙ")
+    print("=" * 60)
+    print()
+    print("Передаточная функция имеет вид:")
+    print("    G(s) = (b_m*s^m + b_{m-1}*s^(m-1) + ... + b_0)")
+    print("           / (s^n + a_{n-1}*s^(n-1) + ... + a_0)")
+    print()
+    print("Индекс коэффициента совпадает с показателем степени s.")
+    print()
+
+
+def print_result(num_order: int, den_order: int, A, B, C, D) -> None:
+    """Выводит результат преобразования."""
     print(f"\nВыполняю преобразование для m={num_order}, n={den_order}...")
 
-    # --- Преобразование ---
-    try:
-        A, B, C, D = tf_to_ss(num_order, den_order)
-    except ValueError as e:
-        print(f"\nОшибка: {e}")
-        return
-
-    # --- Вывод результатов ---
     print("\n" + "=" * 60)
     print("  РЕЗУЛЬТАТ: МАТРИЦЫ ПРОСТРАНСТВА СОСТОЯНИЙ")
     print("=" * 60)
@@ -167,6 +208,34 @@ def main() -> None:
     print("    dx/dt = A * x + B * u")
     print("    y     = C * x + D * u")
     print("=" * 60)
+
+
+def main() -> None:
+    """Главная функция консольного приложения."""
+    has_cli_args = len(sys.argv) > 1
+
+    if has_cli_args:
+        # Режим командной строки — аргументы обязательны
+        cli_result = parse_cli_args(sys.argv[1:])
+        if cli_result is None:
+            sys.exit(1)
+        num_order, den_order = cli_result
+        print_banner()
+        print(f"Получены аргументы из командной строки: m={num_order}, n={den_order}")
+    else:
+        # Интерактивный режим (ввод с клавиатуры)
+        print_banner()
+        num_order, den_order = interactive_input()
+
+    # --- Преобразование ---
+    try:
+        A, B, C, D = tf_to_ss(num_order, den_order)
+    except ValueError as e:
+        print(f"\nОшибка: {e}")
+        return
+
+    # --- Вывод результатов ---
+    print_result(num_order, den_order, A, B, C, D)
 
 
 if __name__ == "__main__":
